@@ -44,10 +44,14 @@ function executeCommand(command) {
   });
 }
 
+function getRandomInt(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 app.post("/executeQuery", async (req, res) => {
   try {
-    // console.log("req.headers >>> ", req.headers);
-    // console.log("req.body >>> ", req.body);
 
     const userMessage = req.body ? req.body : "Default message";
 
@@ -58,16 +62,13 @@ app.post("/executeQuery", async (req, res) => {
       return;
     }
 
-    // console.log("---userMessage:", userMessage);
-
+    // Creating file name from current timestamp
     const currentDate = new Date();
     const currentDateString = currentDate.toISOString();
-    const fileName = currentDateString+".sol";
+    const fileName = currentDateString + getRandomInt(1,10000) + ".sol";
 
     try {
-      console.log("fileName:", fileName);
-      await fs.writeFileSync(fileName, userMessage);   
-      
+      await fs.writeFileSync(fileName, userMessage);  
     } catch{(err)=>{
       res.status(200).send({
         result: "Internal Server Error, Can't create solidity file from your code" + err,
@@ -77,14 +78,25 @@ app.post("/executeQuery", async (req, res) => {
 
     try {
       const command = "slither " + fileName ;
-      console.log("command", command);
       await executeCommand(command);
-
-      console.log("resultStr", logMessages);
-
     }catch{(err)=>{
       res.status(200).send({
         result: "Internal Server Error, Can't audit solidity file from your code" + err,
+      });
+      return;
+    }}
+
+    try {
+      fs.unlink(fileName, (err) => {
+        if (err) {
+            console.error(`Error removing file: ${err}`);
+        } else {
+            console.log(`File has been successfully removed.`);
+        }
+      });
+    } catch{(err)=>{
+      res.status(200).send({
+        result: "Internal Server Error, Can't remove temp file" + err,
       });
       return;
     }}
@@ -94,7 +106,7 @@ app.post("/executeQuery", async (req, res) => {
     });
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5",
+      model: "gpt-3.5-turbo-0301",
       messages: [
         {
           role: "user",
@@ -107,11 +119,6 @@ app.post("/executeQuery", async (req, res) => {
       frequency_penalty: 0,
       presence_penalty: 0,
     });
-
-    // Debugging: Inspect response and response.choices
-    // console.log("Response from OpenAI:", response);
-    // console.log("Choices from OpenAI:", response.choices);
-    // Return the answer
 
     res.status(200).send({
       result: {
