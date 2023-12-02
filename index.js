@@ -5,6 +5,7 @@ const cors = require("cors");
 const http = require("http");
 const OpenAI = require("openai");
 const fs = require('fs');
+const { exec } = require("child_process");
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
@@ -21,64 +22,83 @@ app.all("/*", function (req, res, next) {
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.text());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// const API_KEY = process.env.OPENAI_API_KEY;
-// console.log("API KEY >>> ", API_KEY);
+const API_KEY = process.env.OPENAI_API_KEY;
+var logMessages;
 
-// const openai = new OpenAI({
-//   apiKey: API_KEY,
-// });
+function executeCommand(command) {
+  return new Promise((resolve, reject) => {
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        // console.error('Command output:', stderr);
+        logMessages = stderr.trim();
+        reject(error);
+        return;
+      }
 
-// const msg = async()=>{
-//   const userMessage = "website similar to solidityscan.com";
-
-//   console.log("---userMessage:", userMessage);
-  
-//   const response = await openai.chat.completions.create({
-//     model: "gpt-3.5-turbo-1106",
-//     messages: [
-//       {
-//         role: "user",
-//         content: userMessage,
-//       },
-//     ],
-//     temperature: 0.76,
-//     max_tokens: 1067,
-//     top_p: 1,
-//     frequency_penalty: 0,
-//     presence_penalty: 0,
-//   });
-  
-//   console.log("response", response);
-//   console.log("response", response.choices[0].message.content);
-// }
-
-// msg();
-
+      logMessages = stdout.trim();
+      resolve(stdout.trim());
+    });
+  });
+}
 
 app.post("/executeQuery", async (req, res) => {
   try {
-    console.log("req.body >>> ", req.body);
+    // console.log("req.headers >>> ", req.headers);
+    // console.log("req.body >>> ", req.body);
+
+    const userMessage = req.body ? req.body : "Default message";
+
+    if ( !req.body ) {
+      res.status(200).send({
+        result: "You didn't upload solidity code",
+      });
+      return;
+    }
+
+    // console.log("---userMessage:", userMessage);
+
+    const currentDate = new Date();
+    const currentDateString = currentDate.toISOString();
+    const fileName = currentDateString+".sol";
+
+    try {
+      console.log("fileName:", fileName);
+      await fs.writeFileSync(fileName, userMessage);   
+      
+    } catch{(err)=>{
+      res.status(200).send({
+        result: "Internal Server Error, Can't create solidity file from your code" + err,
+      });
+      return;
+    }}
+
+    try {
+      const command = "slither " + fileName ;
+      console.log("command", command);
+      await executeCommand(command);
+
+      console.log("resultStr", logMessages);
+
+    }catch{(err)=>{
+      res.status(200).send({
+        result: "Internal Server Error, Can't audit solidity file from your code" + err,
+      });
+      return;
+    }}
 
     const openai = new OpenAI({
       apiKey: API_KEY,
     });
 
-    const userMessage = req.body.text ? req.body.text : "Default message";
-
-    console.log("---userMessage:", userMessage);
-
-    const currentDate = new Date();
-    const currentDateString = currentDate.toISOString();
-    const fileName = "audit/"+currentDateString+".sol";
-
     const response = await openai.chat.completions.create({
-      model: "gpt-4-0613",
+      model: "gpt-3.5",
       messages: [
         {
           role: "user",
-          content: userMessage,
+          content: "what is smart contract audit?",
         },
       ],
       temperature: 0.76,
@@ -89,17 +109,20 @@ app.post("/executeQuery", async (req, res) => {
     });
 
     // Debugging: Inspect response and response.choices
-    console.log("Response from OpenAI:", response);
-    console.log("Choices from OpenAI:", response.choices);
+    // console.log("Response from OpenAI:", response);
+    // console.log("Choices from OpenAI:", response.choices);
     // Return the answer
 
     res.status(200).send({
-      result:
-        response.choices &&
-        response.choices[0] &&
-        response.choices[0].message.content
-          ? response.choices[0].message.content.trim()
-          : "Hej! Modellen kan inte svara just nu",
+      result: {
+        "audit_result": logMessages,
+        "gpt":response.choices &&
+                response.choices[0] &&
+                response.choices[0].message.content
+                  ? response.choices[0].message.content.trim()
+                  : "You can't find answer",
+      }
+        
     });
   } catch (error) {
     console.log("********************************", error);
