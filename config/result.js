@@ -42,6 +42,26 @@ const auditResult = `<!DOCTYPE html>
             margin-top: 30px;
             color: #777;
         }
+
+        .critical{
+            color: red;
+        }
+
+        .major{
+            color: brown;
+        }
+
+        .medium{
+            color: orange;
+        }
+
+        .minor{
+            color: rgb(104, 104, 1);
+        }
+
+        .informational{
+            color: green;
+        }
     </style>
 </head>
 <body>
@@ -50,6 +70,30 @@ const auditResult = `<!DOCTYPE html>
         <h1>Audit Report</h1>
         <p>Prepared on: %s</p>
     </header>
+
+    <section>
+        <h2>Overall Rating</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class='critical'>Critical</th>
+                    <th class='major'>Major</th>
+                    <th class='medium'>Medium</th>
+                    <th class='minor'>Minor</th>
+                    <th class='informational'>Informational</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
 
     <section>
         <h2>Overall View</h2>
