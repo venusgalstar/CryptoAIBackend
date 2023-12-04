@@ -90,6 +90,12 @@ const auditResult = `<!DOCTYPE html>
             %s
         </p>
     </section>
+    <section>
+        <h2>GPT Comment</h2>
+        <p>
+            %s
+        </p>
+    </section>
     <footer>
         <p>&copy; 2023 Audit Corporation. All rights reserved.</p>
     </footer>
