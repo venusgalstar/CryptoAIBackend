@@ -3,7 +3,7 @@ const express = require("express");
 var bodyParser = require("body-parser");
 const cors = require("cors");
 const http = require("http");
-const { audit, inspectError } = require("./utils");
+const { audit, auditAddress, inspectError } = require("./utils");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -123,7 +123,7 @@ app.post("/audit", async (req, res) => {
 app.post("/auditAddress", async (req, res) => {
   try {
 
-    console.log("here");
+    console.log("here address");
 
     const userMessage = req.body ? req.body : "Default message";
 

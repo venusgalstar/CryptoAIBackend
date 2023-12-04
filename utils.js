@@ -15,6 +15,10 @@ const wordsToRemove = ['solc', 'Slither'];
 console.log("AI_MODEL", AI_MODEL);
 const placeholderRegex = /svg width="(\d+)pt"/;
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function executeCommand(command) {
     return new Promise((resolve, reject) => {
         exec(command, (error, stdout, stderr, stdio) => {
@@ -103,10 +107,7 @@ function inspectError(slitherAuditResult) {
     var detectors = slitherAuditResult.split("INFO:Detectors:");
     var idx = 0;
 
-    console.log("\n\n\n\n\n\n");
-
     for (idx = 0; idx < detectors.length; idx++) {
-        console.log("idx", detectors[idx]);
 
         if (detectors[idx].indexOf("Reference:") == -1) {
             errorArray[4] += detectors[idx].split("\n").length;
@@ -115,19 +116,12 @@ function inspectError(slitherAuditResult) {
 
         var errors = detectors[idx].split(")\n");
 
-        console.log("errors", errors);
-        console.log("errors", errors.length);
-
-
         var error = errors[errors.length - 1];
         error = error.replaceAll("Reference: ", "");
         error = error.replaceAll(/\n/g, "");
         errorArray[estimateError(error)] += errors.length - 1;
-
-        console.log("errorArray", errorArray);
     }
 
-    console.log("errorArray", errorArray);
     return errorArray;
 }
 
@@ -160,10 +154,7 @@ async function audit(userMessage) {
         mainMsg = await executeCommand(command);
 
         errArray = inspectError(mainMsg);
-        console.log("mainMsg", mainMsg);
         mainMsg = mainMsg.replaceAll("INFO:Detectors:", "\n\nINFO -> Detectors:");
-        
-        console.log("mainMsg", mainMsg);
 
         const printGraph = `slither ${fileName} --print call-graph`;
         await executeCommand(printGraph);
@@ -273,7 +264,7 @@ async function auditAddress(userMessage) {
     try {
         const mkdir = util.promisify(fs.mkdir);
         await mkdir(dirName, { recursive: true });
-        console.log(`Directory ${dirName} has been created.`);
+        console.log(`Directory ${dirName} has been created address.`);
     } catch {
         (err) => {
             console.log("err", err);
@@ -283,24 +274,23 @@ async function auditAddress(userMessage) {
 
     // Staring to Audit
     try {
-        const cdDommand = `cd ${dirName}`;
-        await executeCommand(cdDommand);
+        const cdDommand = `cd ${dirName}/\n`;
+        var result = await executeCommand(cdDommand);
 
-        const command = `slither mainet:${contractAddress}`;
+        const command = cdDommand + `slither mainet:${contractAddress}\n`;
         mainMsg = await executeCommand(command);
+        sleep(1000);
 
         errArray = inspectError(mainMsg);
-        console.log("mainMsg", mainMsg);
         mainMsg = mainMsg.replaceAll("INFO:Detectors:", "\n\nINFO -> Detectors:");
-        
-        console.log("mainMsg", mainMsg);
 
-        const printGraph = `slither mainet:${contractAddress} --print call-graph`;
-        await executeCommand(printGraph);
+        const printGraph = cdDommand + `slither mainet:${contractAddress} --print call-graph\n`;
+        var res1 = await executeCommand(printGraph);
+        sleep(1000);
 
-        const printDotPng = `slither mainet:${contractAddress} --print cfg`;
-        await executeCommand(printDotPng);
-
+        const printDotPng = cdDommand + `slither mainet:${contractAddress} --print cfg --etherscan-apikey K1QT6DGERPY6E7GJ74KXEDBBHP3G5JNQQU\n`;
+        var res2 = await executeCommand(printDotPng);
+ 
         files = await getDotFileList(dirName);
 
         for (var idx = 0; idx < files.length; idx++) {
