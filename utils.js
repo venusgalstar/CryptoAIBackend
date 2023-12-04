@@ -7,7 +7,11 @@ const { auditResult } = require("./config/result");
 const util = require('util');
 
 dotenv.config();
-const API_KEY = dotenv.API_KEY;
+const API_KEY = process.env.OPENAI_API_KEY;
+const AI_MODEL = process.env.OPENAI_MODEL;
+
+console.log("AI_MODEL", AI_MODEL);
+const placeholderRegex = /svg width="(\d+)pt"/;
 
 function executeCommand(command) {
     return new Promise((resolve, reject) => {
@@ -43,7 +47,7 @@ function getDotFileList(dirName) {
     });
 }
 
-const wordsToRemove = ['solc'];
+const wordsToRemove = ['solc', 'Slither', 'slither'];
 
 function strToHmtl(str) {
     const lines = str.split('\n');
@@ -66,7 +70,7 @@ async function audit(userMessage) {
     const currentDateString = currentDate.toISOString();
     const dirName = "audit/" + currentDateString;
     const fileName = dirName + "/" + getRandomInt(1, 10000) + ".sol";
-    var mainMsg, humanMsg, contractSummary, functionSummary, files, svgItemMsg;
+    var mainMsg, humanMsg, contractSummary, functionSummary, files, svgItemMsg = "", response = "";
     var svgArray = [];
 
     try {
@@ -102,6 +106,14 @@ async function audit(userMessage) {
 
             const command = `dot '${dirName}/${files[idx]}' -Tsvg`;
             var svgItem = await executeCommand(command);
+            // svgItem = svgItem.replace(placeholderRegex, 'svg width="100%"');
+
+            const match = svgItem.match(/svg width="(\d+)pt"/);
+            if (match) {
+                const widthValue = match[1];
+                if (widthValue == 8)
+                    continue;
+            }
             svgItemMsg += "<tr><td><h3>" + files[idx] + "</h3>" + svgItem + "</td></tr>";
             svgArray.push(svgItem);
         }
@@ -134,24 +146,31 @@ async function audit(userMessage) {
         }
     }
 
-    const openai = new OpenAI({
-        apiKey: API_KEY,
-    });
+    try {
+        const openai = new OpenAI({
+            apiKey: API_KEY,
+        });
 
-    const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo-0301",
-        messages: [
-            {
-                role: "user",
-                content: "what is smart contract audit?",
-            },
-        ],
-        temperature: 0.76,
-        max_tokens: 1067,
-        top_p: 1,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-    });
+        response = await openai.chat.completions.create({
+            model: AI_MODEL,
+            messages: [
+                {
+                    role: "user",
+                    content: userMessage + "\n please audit this smart contract",
+                },
+            ],
+            temperature: 0.76,
+            max_tokens: 1067,
+            top_p: 1,
+            frequency_penalty: 0,
+            presence_penalty: 0,
+        });
+    } catch {
+        (err) => {
+            console.log("Internal Server Error, Can't remove temp file" + err);
+        }
+    }
+
 
     gptComment = response.choices &&
         response.choices[0] &&
@@ -163,10 +182,11 @@ async function audit(userMessage) {
     humanMsg = strToHmtl(humanMsg);
     contractSummary = strToHmtl(contractSummary);
     functionSummary = strToHmtl(functionSummary);
+    gptComment = gptComment.replace(/\n/g, "<br>");
 
-    resultMsg = util.format(auditResult, currentDateString, mainMsg, svgItemMsg.replace(/"/g, "'"), humanMsg, contractSummary, functionSummary, gptComment);
+    resultMsg = util.format(auditResult, currentDateString, gptComment, mainMsg, svgItemMsg.replace(/"/g, "'"), humanMsg, contractSummary, functionSummary);
     // filteredContent = filteredContent.replace(/\n/g, "<br>");
-    return resultMsg.replace(/\n/g,"");
+    return resultMsg.replace(/\n/g, "");
 }
 
 module.exports = {

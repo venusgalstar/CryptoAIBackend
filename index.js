@@ -22,8 +22,21 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.text());
 app.use(bodyParser.urlencoded({ extended: true }));
+// // Original string with a placeholder
+// const text = 'Some text width="333pt" more text';
+// const placeholderRegex  = /width="(\d+)pt"/;
+// const match = text.match(/width="(\d+)pt"/);
 
-const API_KEY = process.env.OPENAI_API_KEY;
+// if (match) {
+//   const widthValue = match[1];
+//   console.log(`Width value: ${widthValue}`);
+// } else {
+//   console.log('No match found.');
+// }
+
+// const mtext = text.replace(placeholderRegex, "width='100%'");
+
+// console.log("mtext", mtext);
 
 app.post("/audit", async (req, res) => {
   try {

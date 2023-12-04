@@ -52,6 +52,13 @@ const auditResult = `<!DOCTYPE html>
     </header>
 
     <section>
+        <h2>Overall View</h2>
+        <p>
+            %s
+        </p>
+    </section>
+
+    <section>
         <h2>Summary of Findings</h2>
         <p>
             %s
@@ -90,22 +97,43 @@ const auditResult = `<!DOCTYPE html>
             %s
         </p>
     </section>
-    <section>
-        <h2>GPT Comment</h2>
-        <p>
-            %s
-        </p>
-    </section>
     <footer>
         <p>&copy; 2023 Audit Corporation. All rights reserved.</p>
     </footer>
 
 </body>
+<script>
+    const screenWidth = window.innerWidth * 2 / 3;;
+
+    function scaleSvg(svg, scaleX) {
+        
+        const currentWidth = parseFloat(svg.getAttribute('width'));
+        const currentHeight = parseFloat(svg.getAttribute('height'));
+
+        if( currentWidth < scaleX )
+            return;
+        
+        const newWidth = scaleX;
+        const newHeight = currentHeight * scaleX / currentWidth;
+
+        svg.setAttribute('width', newWidth+'pt');
+        svg.setAttribute('height', newHeight+'pt');
+    }
+
+
+    const svgElements = document.getElementsByTagName('svg');
+
+    for (let i = 0; i < svgElements.length; i++) {
+        var svgElement = svgElements[i];
+
+        scaleSvg(svgElement, screenWidth);
+    }
+</script>
 </html>`;
 
 const auditResult1 = `<html>%s, %s, %s</html>`;
 
 module.exports = {
-    auditResult, 
+    auditResult,
     auditResult1
 };
