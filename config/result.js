@@ -67,7 +67,7 @@ const auditResult = `<!DOCTYPE html>
 <body>
 
     <header>
-        <h1>Audit Report</h1>
+        <h1>Audit Report %s</h1>
         <p>Prepared on: %s</p>
     </header>
 
