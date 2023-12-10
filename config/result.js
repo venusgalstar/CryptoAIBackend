@@ -147,7 +147,9 @@ const auditResult = `<!DOCTYPE html>
 
 </body>
 <script>
-    const screenWidth = window.innerWidth * 2 / 3;;
+    const screenWidth = window.innerWidth * 2 / 3;
+
+    console.log('screenWidth',screenWidth);
 
     function scaleSvg(svg, scaleX) {
         

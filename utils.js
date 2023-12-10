@@ -195,11 +195,9 @@ async function audit(userMessage) {
         console.log(`Directory ${dirName} has been created.`);
         await fs.writeFileSync(fileName, userMessage);
         console.log(`File ${fileName} has been created.`);
-    } catch {
-        (err) => {
-            console.log("err", err);
-            return "Internal Server Error, Can't create solidity file from your code" + err;
-        }
+    } catch (err) {
+        console.log("err", err);
+        return "Internal Server Error, Can't create solidity file from your code" + err;
     }
 
     // Staring to Audit
@@ -244,11 +242,9 @@ async function audit(userMessage) {
         const printHumanSummary = `slither ${fileName} --print human-summary`;
         humanMsg = await executeCommand(printHumanSummary);
 
-    } catch {
-        (err) => {
-            console.log("err", err);
-            return "Internal Server Error, Can't audit solidity file from your code" + err;
-        }
+    } catch (err) {
+        console.log("err", err);
+        return "Internal Server Error, Can't audit solidity file from your code" + err;
     }
 
     try {
@@ -256,46 +252,42 @@ async function audit(userMessage) {
         await rmdir(dirName, { recursive: true });
         console.log(`File has been successfully removed.`);
 
-    } catch {
-        (err) => {
-            console.log("err", err);
-            return "Internal Server Error, Can't remove temp file" + err;
-        }
+    } catch (err) {
+        console.log("err", err);
+        return "Internal Server Error, Can't remove temp file" + err;
     }
 
-    try {
-        const openai = new OpenAI({
-            apiKey: API_KEY,
-        });
+    // try {
+    //     const openai = new OpenAI({
+    //         apiKey: API_KEY,
+    //     });
 
-        const resultSegments = divideTextByTokens("I am going to get smart contract audit report.\n It is smart contract source code.\n " + userMessage + "\n please audit this smart contract", maxTokensPerSegment);
+    //     const resultSegments = divideTextByTokens("I am going to get smart contract audit report.\n It is smart contract source code.\n " + userMessage + "\n please audit this smart contract", maxTokensPerSegment);
 
-        for (var idx = 0; idx < resultSegments.length; idx++) {
-            response = await openai.chat.completions.create({
-                model: AI_MODEL,
-                messages: [
-                    {
-                        role: "user",
-                        content: resultSegments[idx],
-                    },
-                ],
-                temperature: 1.2,
-                max_tokens: 6000,
-            });
+    //     for (var idx = 0; idx < resultSegments.length; idx++) {
+    //         response = await openai.chat.completions.create({
+    //             model: AI_MODEL,
+    //             messages: [
+    //                 {
+    //                     role: "user",
+    //                     content: resultSegments[idx],
+    //                 },
+    //             ],
+    //             temperature: 0.95,
+    //             max_tokens: 1000,
+    //         });
 
-            gptComment += response.choices &&
-                response.choices[0] &&
-                response.choices[0].message.content
-                ? response.choices[0].message.content.trim()
-                : " ";
+    //         gptComment += response.choices &&
+    //             response.choices[0] &&
+    //             response.choices[0].message.content
+    //             ? response.choices[0].message.content.trim()
+    //             : " ";
 
-            console.log("gptComment", gptComment);
-        }
-    } catch {
-        (err) => {
-            console.log("Internal Server Error, Can't remove temp file" + err);
-        }
-    }
+    //         console.log("gptComment", gptComment);
+    //     }
+    // } catch (err) {
+    //     console.log("Internal Server Error, Can't remove temp file" + err);
+    // }
 
     mainMsg = strToHmtl(mainMsg);
     humanMsg = strToHmtl(humanMsg);
@@ -334,7 +326,6 @@ async function getSolidityCode(subDirName) {
         if (newFiles[idx].indexOf(".sol") == -1)
             continue;
 
-        console.log("idx", idx);
         try {
             const data = fs.readFileSync(newSubDirName + "/" + newFiles[idx], 'utf-8');
             return data;
@@ -356,17 +347,31 @@ async function auditAddress(userMessage) {
     var errArray, gptComment = "";
     var svgArray = [];
     var contractAddress = userMessage;
+    var results = {
+        type: "",
+        address: "",
+        time: "",
+        result: "",
+    };
+
+    results["type"] = "code/address";
+    results["address"] = userMessage;
+    results["time"] = currentDateString;
+
+    console.log("result", results);
 
     if (!isValidEvmAddress(userMessage)) {
         console.log("This address isn't valid EVM address", userMessage);
-        return "This address isn't valid EVM address";
+        results["result"] = "This address isn't valid EVM address";        
+        return results;
     }
 
     const checkEOA = await isEOA(userMessage);
     if (checkEOA) {
         console.log("This address isn't valid smart contract address", userMessage);
-        return "This address isn't valid smart contract address";
-    }
+        results["result"] = "This address isn't valid smart contract address";
+        return results;
+    }    
 
     const etherscanApiUrl = `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${userMessage}&apikey=${ETH_API_KEY}`;
     const verifiedResponse = await axios.get(etherscanApiUrl);
@@ -374,19 +379,20 @@ async function auditAddress(userMessage) {
 
     if (status != 1) {
         console.log("This smart contract isn't verified", userMessage);
-        return "This smart contract isn't verified";
+        results["result"] = "This smart contract isn't verified";
+        return results;
     }
 
     try {
         const mkdir = util.promisify(fs.mkdir);
         await mkdir(dirName, { recursive: true });
         console.log(`Directory ${dirName} has been created address.`);
-    } catch {
-        (err) => {
-            console.log("err", err);
-            return "Internal Server Error, Can't create solidity file from your code" + err;
-        }
+    } catch (err) {
+        console.log("err", err);
+        results["result"] = "Internal Server Error, Can't create solidity file from your code" + err;
+        return results;
     }
+
 
     // Staring to Audit
     try {
@@ -439,11 +445,10 @@ async function auditAddress(userMessage) {
         const printHumanSummary = `slither mainet:${contractAddress} --print human-summary --etherscan-apikey ${ETH_API_KEY}`;
         humanMsg = await executeCommand(printHumanSummary);
 
-    } catch {
-        (err) => {
-            console.log("err", err);
-            return "Internal Server Error, Can't audit solidity file from your code" + err;
-        }
+    } catch (err) {
+        console.log("err", err);
+        results["result"] = "Internal Server Error, Can't audit solidity file from your code" + err;
+        return results;
     }
 
     try {
@@ -451,12 +456,12 @@ async function auditAddress(userMessage) {
         await rmdir(dirName, { recursive: true });
         console.log(`File has been successfully removed.`);
 
-    } catch {
-        (err) => {
-            console.log("err", err);
-            return "Internal Server Error, Can't remove temp file" + err;
-        }
+    } catch (err) {
+        console.log("err", err);
+        results["result"] = "Internal Server Error, Can't remove temp file" + err;
+        return results;
     }
+
 
     try {
         const openai = new OpenAI({
@@ -467,6 +472,8 @@ async function auditAddress(userMessage) {
 
         for (var idx = 0; idx < resultSegments.length; idx++) {
 
+            console.log("idx", idx);
+
             response = await openai.chat.completions.create({
                 model: AI_MODEL,
                 messages: [
@@ -475,8 +482,8 @@ async function auditAddress(userMessage) {
                         content: resultSegments[idx],
                     },
                 ],
-                temperature: 1.2,
-                max_tokens: 6000,
+                temperature: 0.95,
+                max_tokens: 1000,
             });
 
             gptComment += response.choices &&
@@ -484,12 +491,15 @@ async function auditAddress(userMessage) {
                 response.choices[0].message.content
                 ? response.choices[0].message.content.trim()
                 : " ";
+
+            console.log("response", response);
+            console.log("gptComment", gptComment);
         }
-    } catch {
-        (err) => {
-            console.log("Internal Server Error, Can't remove temp file" + err);
-        }
-    }
+    } catch (err) {
+        console.log("Internal Server Error, Can't remove temp file" + err);
+        // result["result"] = "Internal Server Error, Can't remove temp file" + err;
+        // return result;
+    }    
 
     mainMsg = strToHmtl(mainMsg);
     humanMsg = strToHmtl(humanMsg);
@@ -500,7 +510,54 @@ async function auditAddress(userMessage) {
     gptComment = gptComment.replaceAll("ChatGPT", "Our Service");
 
     resultMsg = util.format(auditResult, userMessage, currentDateString, errArray[0], errArray[1], errArray[2], errArray[3], errArray[4], gptComment, mainMsg, svgItemMsg.replaceAll(/"/g, "'"), humanMsg, contractSummary, functionSummary);
-    return resultMsg.replaceAll(/\n/g, "");
+    
+    
+    var successResult = [];
+    successResult.push({
+        "title" : "Overall Rating",
+        "content" : errArray,
+    });
+
+    successResult.push({
+        "title" : "Overall View",
+        "content" : gptComment,
+    });
+
+    successResult.push({
+        "title" : "Summary of Findings",
+        "content" : mainMsg,
+    });
+
+    successResult.push({
+        "title" : "Configuration Audit",
+        "content" : svgItemMsg.replaceAll(/"/g, "'"),
+    });
+
+    successResult.push({
+        "title" : "Human Summary of Audit",
+        "content" : humanMsg,
+    });
+
+    successResult.push({
+        "title" : "Contract Summary of Audit",
+        "content" : contractSummary,
+    });
+
+    successResult.push({
+        "title" : "Function Summary of Audit",
+        "content" : functionSummary,
+    });
+
+    successResult.push({
+        "html" : "Final HMTL",
+        "content" : resultMsg.replaceAll(/\n/g, ""),
+    });
+
+    results["result"] = successResult;
+
+    console.log("results", results);
+
+    return results;
 }
 module.exports = {
     audit,

@@ -63,7 +63,7 @@ app.post("/audit/source", async (req, res) => {
 app.post("/audit/address", async (req, res) => {
   try {
 
-    console.log("here address");
+    console.log("here address", req.body);
 
     const userMessage = req.body ? req.body : "Default message";
 
