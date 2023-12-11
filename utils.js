@@ -554,9 +554,6 @@ async function auditAddress(userMessage) {
     });
 
     results["result"] = successResult;
-
-    console.log("results", results);
-
     return results;
 }
 module.exports = {
